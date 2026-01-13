@@ -1,0 +1,78 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('github') {
+            steps {
+                git branch: 'main',
+                    credentialsId: 'cb6f69bd-e61e-43dc-a88f-460d8834ad53',
+                    url: 'https://github.com/SUBHA-coder/private-repo.git'
+            }
+        }
+
+        stage('test') {
+            steps {
+                sh 'mvn test'
+            }
+        }
+        stage('scanning') {
+            steps {
+                withSonarQubeEnv(installationName: 'sonarcube') {
+                    sh 'mvn clean verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar'
+                }
+            }
+        }
+
+        stage('package') {
+            steps {
+                sh 'mvn package'
+            }
+        }
+    }
+
+    post {
+        success {
+            mail(
+                to: 'subhadipdas713151@gmail.com',
+                cc: '2230210@kiit.ac.in',
+                bcc: '2230228@kiit.ac.in',
+                subject: "✅ BUILD SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: """Hello,
+
+The Jenkins build has completed SUCCESSFULLY.
+
+Job Name    : ${env.JOB_NAME}
+Build Number: ${env.BUILD_NUMBER}
+Build Status: SUCCESS
+Build URL   : ${env.BUILD_URL}
+
+Regards,
+Jenkins
+"""
+            )
+        }
+
+        failure {
+            mail(
+                to: 'subhadipdas713151@gmail.com',
+                cc: '2230210@kiit.ac.in',
+                bcc: '2230228@kiit.ac.in',
+                subject: "❌ BUILD FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: """Hello,
+
+The Jenkins build has FAILED.
+
+Job Name    : ${env.JOB_NAME}
+Build Number: ${env.BUILD_NUMBER}
+Build Status: FAILURE
+Build URL   : ${env.BUILD_URL}
+
+Please check the console logs for details.
+
+Regards,
+Jenkins
+"""
+            )
+        }
+    }
+}
