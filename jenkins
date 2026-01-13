@@ -1,24 +1,55 @@
 pipeline {
     agent any
 
+    /* =======================
+       PARAMETERS
+       ======================= */
+    parameters {
+        string(name: 'GIT_BRANCH', defaultValue: 'main', description: 'Git branch to build')
+        booleanParam(name: 'RUN_TESTS', defaultValue: true, description: 'Run Maven tests')
+        booleanParam(name: 'RUN_SONAR', defaultValue: true, description: 'Run SonarQube scan')
+    }
+
+    /* =======================
+       ENVIRONMENT VARIABLES
+       ======================= */
+    environment {
+        MAVEN_OPTS = '-Xmx1024m'
+        SONAR_PROJECT_KEY = 'private-repo'
+        SONAR_PROJECT_NAME = 'private-repo'
+    }
+
     stages {
+
         stage('github') {
             steps {
-                git branch: 'main',
+                git branch: "${params.GIT_BRANCH}",
                     credentialsId: 'cb6f69bd-e61e-43dc-a88f-460d8834ad53',
                     url: 'https://github.com/SUBHA-coder/private-repo.git'
             }
         }
 
         stage('test') {
+            when {
+                expression { params.RUN_TESTS }
+            }
             steps {
                 sh 'mvn test'
             }
         }
+
         stage('scanning') {
+            when {
+                expression { params.RUN_SONAR }
+            }
             steps {
                 withSonarQubeEnv(installationName: 'sonarcube') {
-                    sh 'mvn clean verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar'
+                    sh """
+                    mvn clean verify \
+                    org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+                    -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                    -Dsonar.projectName=${SONAR_PROJECT_NAME}
+                    """
                 }
             }
         }
